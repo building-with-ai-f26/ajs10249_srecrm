@@ -5,7 +5,10 @@
 // Rules (decided Nov 17, 2026):
 //  - Current students are skipped. Alumni are kept; unmatched ones become alumni contacts.
 //  - Registered and Attended are separate. No source has check-ins, so Attended = Unknown.
-//  - Chen approval is not set from any source (Sam reviews first). New contacts: Owner = ENRICH_OWNER.
+//  - Chen approval is not set from any source (Sam reviews first). New contacts: Owner blank (the club assigns).
+//  - New contacts with a firm go to the "Firm" queue. Those without one (no firm given and an email
+//    domain that matches no known firm) go to the "Unaffiliated" queue, listed with the events they
+//    attended so they can be added to a firm later or invited to future conferences.
 //  - Gender, dietary, accessibility, address and payment columns are never read into output.
 const fs = require("fs");
 const path = require("path");
@@ -13,7 +16,6 @@ const ExcelJS = require("exceljs");
 const { auth, sheets } = require("@googleapis/sheets");
 const { drive } = require("@googleapis/drive");
 
-const OWNER = process.env.ENRICH_OWNER || "";
 const EVENTS = [
   { key: "power24", name: "NYU Real Estate: Powering the Future (2024)", date: "2024-09-27", isNew: true,
     speakers: [{ kind: "agenda", path: "2024 09 27 | SREC Power Conference /Speaker List Tracker", tab: "New Agenda" }],
@@ -66,6 +68,10 @@ const parseCsv = text => {
   return rows;
 };
 // Agenda rows that are program items, not people.
+// Firm values that aren't a firm.
+const JUNK_ORG = /^(n\/?a|none|na|self|self-employed|retired|student|nyu|nyu stern|stern|-|\.|tbd|unemployed|independent|personal)$/i;
+const PERSONAL = /^(gmail|googlemail|yahoo|ymail|hotmail|outlook|live|msn|icloud|me|mac|aol|proton|protonmail|comcast|verizon)\./;
+const domainOf = e => (e.split("@")[1] || "").replace(/^(mail|email)\./, "");
 const NOT_PERSON = /\b(break|lunch|breakfast|coffee|networking|reception|registration|check-in|remarks|welcome|closing|opening|q ?& ?a|tbd|tba|intermission|cocktail|happy hour|transition)\b/i;
 // "JOHN SMITH" / "john smith" -> "John Smith"; mixed-case names are left alone.
 const tidyName = s => (s && (s === s.toUpperCase() || s === s.toLowerCase())
@@ -150,13 +156,19 @@ function alumniFields(r) {
   }
 
   // Current sheet state (read only).
-  const tabs = ["Contacts", "Events", "Panelists", "Event_Attendance"];
+  const tabs = ["Contacts", "Organizations", "Events", "Panelists", "Event_Attendance"];
   const got = await sh.spreadsheets.values.batchGet({ spreadsheetId: process.env.GOOGLE_SHEET_ID, ranges: tabs.map(t => `'${t}'`) });
   const sheet = Object.fromEntries(tabs.map((t, i) => [t, toObjects(got.data.valueRanges[i].values || [])]));
   const byEmail = new Map(), byName = new Map();
   for (const c of sheet.Contacts) {
     const e = email(c.Email); if (e) byEmail.set(e, c);
     const nk = nameKey(c.First_Name, c.Last_Name); if (nk) byName.set(nk, [...(byName.get(nk) || []), c]);
+  }
+  const orgByKey = new Map(), orgByDomain = new Map();
+  for (const o of sheet.Organizations) {
+    if (o.Org_Name) orgByKey.set(orgKey(o.Org_Name), o.Org_Name);
+    const d = str(o.Website).toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").split(/[/?#]/)[0];
+    if (d && o.Org_Name) orgByDomain.set(d, o.Org_Name);
   }
   const existingEvents = new Set(sheet.Events.map(e => e.Event_Name));
   const logged = (tab, ev) => new Set(sheet[tab].filter(r => r.Event_Name === ev).map(r => r.Contact_ID));
@@ -184,7 +196,7 @@ function alumniFields(r) {
 
   // Returns the Contact_ID (existing, or NEW-n for a proposed contact) and records proposals.
   function resolve(p, ev, src, role) {
-    p = { ...p, first: clean(tidyName(p.first)), last: clean(tidyName(p.last)), title: clean(p.title), org: clean(p.org) };
+    p = { ...p, first: clean(tidyName(p.first)), last: clean(tidyName(p.last)), title: clean(p.title), org: JUNK_ORG.test(str(p.org)) ? "" : clean(p.org) };
     const m = match(p);
     const S = stats[ev.key];
     const base = { Event: ev.name, Name: `${p.first} ${p.last}`.trim(), Organization: p.org, Title: p.title, Email: p.email, Source_File: src.file, Source_Tab: src.tab };
@@ -212,11 +224,12 @@ function alumniFields(r) {
       const source = p.alumni && !p.org ? "Stern alumni" : role === "attendee" ? "Event attendee" : "Past panelist / speaker";
       const twin = [...newPeople.values()].find(q => q.nk === nk);
       if (twin) { m.check = true; m.how = `same name as ${twin.id} but different email or firm`; }
-      newPeople.set(id, { id, nk, email: p.email, org: p.org });
-      add({ ...base, Action: "new_contact", Target_Tab: "Contacts", Contact_ID: id, Match: m.how,
+      const row = {};
+      newPeople.set(id, { id, nk, email: p.email, org: p.org, row, p, source });
+      Object.assign(row, { ...base, Action: "new_contact", Target_Tab: "Contacts", Contact_ID: id, Match: m.how,
         Field: "First_Name|Last_Name|Title|Organization|Email|Source|Owner|Stern_Alum|Stern_Program|Class_Year",
-        Proposed: [p.first, p.last, p.title, p.org, p.email, source, OWNER, ...(p.alumni ? [p.alumni.Stern_Alum, p.alumni.Stern_Program, p.alumni.Class_Year] : ["", "", ""])].join("|"),
-        Note: [m.check ? "CHECK: " + m.how : "", !p.email ? "no email" : "", /gmail|yahoo|hotmail|icloud|outlook|aol/.test(p.email) ? "personal email" : ""].filter(Boolean).join("; ") });
+        Note: m.check ? "CHECK: " + m.how : "" });
+      add(row);
       S.newContacts++;
       return id;
     }
@@ -288,9 +301,33 @@ function alumniFields(r) {
     }
   }
 
+  // Place each new contact in a queue now that all events are read (a later event may supply
+  // the firm or email). Firm: named firm, or email domain of a firm already in Organizations.
+  const eventsOf = new Map();
+  for (const r of out) if ((r.Action === "attendance" || r.Action === "panelist") && /^NEW-/.test(r.Contact_ID)) {
+    const set = eventsOf.get(r.Contact_ID) || new Set(); set.add(r.Event); eventsOf.set(r.Contact_ID, set);
+  }
+  const queues = { Firm: 0, Unaffiliated: 0 }, firmStatus = { "existing firm": 0, "firm not in Organizations yet": 0, "firm from email domain": 0 };
+  for (const n of newPeople.values()) {
+    const p = { ...n.p, email: n.email || n.p.email, org: n.org || n.p.org };
+    const d = domainOf(p.email), personal = !d || PERSONAL.test(d) || /\.edu$/.test(d);
+    let org = p.org, how = "";
+    if (org) { const known = orgByKey.get(orgKey(org)); if (known) { org = known; how = "existing firm"; } else how = "firm not in Organizations yet"; }
+    else if (!personal && orgByDomain.has(d)) { org = orgByDomain.get(d); how = "firm from email domain"; }
+    const queue = org ? "Firm" : "Unaffiliated";
+    queues[queue]++; if (how) firmStatus[how]++;
+    Object.assign(n.row, {
+      Queue: queue, Organization: org, Email: p.email,
+      Suggested_Org: !org && !personal ? d : "",
+      Events: [...(eventsOf.get(n.id) || [])].join("; "),
+      Proposed: [p.first, p.last, p.title, org, p.email, n.source, "", ...(p.alumni ? [p.alumni.Stern_Alum, p.alumni.Stern_Program, p.alumni.Class_Year] : ["", "", ""])].join("|"),
+      Note: [n.row.Note, how, !p.email ? "no email" : "", personal && p.email && !/\.edu$/.test(d) ? "personal email" : ""].filter(Boolean).join("; "),
+    });
+  }
+
   const stamp = new Date().toLocaleDateString("en-CA");
   const file = path.join(dir, `enrichment-dryrun-${stamp}.csv`);
-  const cols = ["Event", "Action", "Target_Tab", "Contact_ID", "Match", "Name", "Organization", "Title", "Email", "Field", "Proposed", "Note", "Source_File", "Source_Tab"];
+  const cols = ["Event", "Action", "Queue", "Target_Tab", "Contact_ID", "Match", "Name", "Organization", "Suggested_Org", "Title", "Email", "Events", "Field", "Proposed", "Note", "Source_File", "Source_Tab"];
   fs.writeFileSync(file, "﻿" + [cols.join(","), ...out.map(r => cols.map(c => csvCell(r[c])).join(","))].join("\r\n"), "utf8");
 
   console.log("DRY RUN: nothing was written to the sheet.\n");
@@ -306,5 +343,7 @@ function alumniFields(r) {
   const actions = out.reduce((m, r) => (m[r.Action] = (m[r.Action] || 0) + 1, m), {});
   console.log("Proposed changes by type:", actions);
   console.log(`Unique new contacts across all four events: ${newPeople.size}`);
+  console.log("  by queue:", queues);
+  console.log("  firm:", firmStatus);
   console.log(`\nFull proposal (names included) saved privately to:\n  ${file}`);
 })().catch(err => { console.error("Dry run failed:", String(err.message || err)); process.exit(1); });

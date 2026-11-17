@@ -8,7 +8,8 @@
     "start": "node --env-file-if-exists=.env server.js",
     "dedupe": "node --env-file=.env scripts/dedupe-contacts.js",
     "survey": "node --env-file=.env scripts/survey-folder.js",
-    "survey:headers": "node --env-file=.env scripts/survey-headers.js"
+    "survey:headers": "node --env-file=.env scripts/survey-headers.js",
+    "enrich:dry": "node --env-file=.env scripts/enrich-conferences.js"
   },
   "dependencies": {
     "@googleapis/drive": "^27.1.0",

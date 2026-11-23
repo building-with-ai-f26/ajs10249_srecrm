@@ -1,0 +1,27 @@
+# Render Blueprint: the public demo (made-up sample data + Supabase sign-in).
+# Secrets are NOT in this file: Render asks for each "sync: false" value when you create the service.
+services:
+  - type: web
+    name: srecrm-demo
+    runtime: node
+    plan: free
+    region: virginia
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /api/config
+    autoDeploy: true            # every push to main redeploys
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATA_SOURCE
+        value: sample           # the server refuses google/xlsx on a public host
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false             # a separate key with a $2 credit limit, used only here
+      - key: POSTHOG_KEY
+        sync: false
+      - key: POSTHOG_HOST
+        value: https://us.i.posthog.com

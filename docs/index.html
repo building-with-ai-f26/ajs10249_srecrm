@@ -56,7 +56,7 @@
   <main>
     <h1>SRECRM</h1>
     <p class="tagline">A sponsorship CRM for the NYU Stern Real Estate Club board.</p>
-    <p class="meta">PRD v2 · November 16, 2026 (v1: November 8)</p>
+    <p class="meta">PRD v3 · November 23, 2026 (v2: November 16, v1: November 8) · <a href="https://srecrm-demo.onrender.com/">Live demo</a> (made-up data) · <a href="https://github.com/building-with-ai-f26/ajs10249_srecrm/blob/main/SECURITY.md">SECURITY.md</a></p>
 
     <h2>Problem</h2>
     <p>SREC's sponsorship team tracks firms, contacts and outreach across a shared Google Sheet, Slack, and people's heads. Nobody can quickly see who owns a firm, when we last talked to someone, or whether a contact is cleared to approach, so outreach gets duplicated or stalls.</p>
@@ -107,15 +107,17 @@
 
     <h2>How it's built (architecture)</h2>
     <ul>
-      <li><strong>Backend:</strong> Node + Express (<code>server.js</code>), bound to 127.0.0.1 only.</li>
+      <li><strong>Backend:</strong> Node + Express (<code>server.js</code>). The live-sheet version runs on 127.0.0.1 only. The public demo runs on Render, and the server refuses to start there with anything but sample data.</li>
+      <li><strong>Hosting (Build 3):</strong> Render free web service, auto-deployed from <code>main</code> via <code>render.yaml</code>: <a href="https://srecrm-demo.onrender.com/">srecrm-demo.onrender.com</a>. It runs on made-up sample data so classmates can test the full workflow on a phone. Rollback: redeploy the last good build in Render, or revert the commit. The free tier sleeps after 15 minutes, so the first load takes about 50 seconds.</li>
+      <li><strong>Sign-in and access (Build 3):</strong> Supabase Auth plus Row Level Security. Supabase stores only what RLS needs: the login, a <code>members</code> row (board name, role) and <code>contact_access</code> (Contact_ID, owner, approval, owner hold). No names, emails or outreach. The server asks Supabase which contacts a person may work <em>using that person's own token</em>, so RLS decides. Other contacts come back without an email, and writes to them are refused. Schema and policies are in <code>migrations/</code>.</li>
       <li><strong>Frontend:</strong> plain HTML, CSS and JavaScript in one page (<code>public/index.html</code>). No framework, no build step.</li>
-      <li><strong>Database:</strong> none of its own. The existing Google Sheet stays the source of truth. The app signs in with Google (OAuth, an Internal app in an NYU Cloud project) instead of a service account: no long-lived key to protect, NYU's sharing rules don't get in the way, and each board member can later sign in as themselves so access follows the sheet's own sharing.</li>
+      <li><strong>Database:</strong> no database for contact data. The existing Google Sheet stays the source of truth. The app signs in with Google (OAuth, an Internal app in an NYU Cloud project) instead of a service account: no long-lived key to protect, NYU's sharing rules don't get in the way, and each board member can later sign in as themselves so access follows the sheet's own sharing.</li>
       <li><strong>What it writes:</strong> only the log tabs (<code>Outreach_Log</code>, <code>Event_Attendance</code>, <code>Relationships</code>, <code>Assignment_Log</code>, <code>Tasks</code>) and the <code>Owner</code> column on Contacts and Organizations. Every owner change is recorded in <code>Assignment_Log</code>. All other fields are edited in the sheet by design.</li>
       <li><strong>Data modes:</strong> <code>DATA_SOURCE</code> switches between sample data (default, for screenshots and tests), a read-only Excel copy (demo fallback) and the live sheet.</li>
       <li><strong>Models:</strong> Claude Haiku 5.5 through OpenRouter, with web search, writes a short "About this firm" profile. It gets only public firm info (name, type, city, website), never contact data, and each answer is cached so a firm is looked up once.</li>
       <li><strong>Analytics:</strong> PostHog, with no names, emails or search text sent (see "How I'll know it works").</li>
       <li><strong>Run it:</strong> <code>npm start</code>, then open <code>http://localhost:3000</code>.</li>
-      <li><strong>Access control:</strong> today, only someone on my laptop can reach it. Build 5: hosted, Google sign-in limited to nyu.edu plus an allowlist.</li>
+      <li><strong>Access control:</strong> the rule is that admins and approvers see every contact, an owner always sees their own contacts, and others see a contact only if it's approved and not on an owner hold; Do Not Contact is admins and approvers only. Enforced by Supabase RLS on the demo today. Build 5 brings the live sheet online behind nyu.edu Google sign-in, with a one-way sync of access facts from the sheet to Supabase.</li>
     </ul>
     <p><strong>One action, end to end: logging an outreach.</strong></p>
     <ol>
@@ -157,7 +159,7 @@
       <tr><td>Unit cost: search or log an outreach</td><td>$0</td><td>The Google Sheets API is free at this volume. Reads are cached for a minute.</td></tr>
       <tr><td>Unit cost: firm profile</td><td>~$0.02 per firm, once</td><td>Haiku 5.5 tokens cost a fraction of a cent; most of the cost is OpenRouter's web search. Cached, so all 174 firms come to roughly $3–4 in total. Hard cap: $10 credit limit on the key.</td></tr>
       <tr><td>Analytics</td><td>$0</td><td>PostHog free tier (1M events/month). We'll use a tiny fraction of that.</td></tr>
-      <tr><td>Hosting</td><td>$0 now; ~$0–10/mo later</td><td>Runs on localhost today. Hosting is Build 5.</td></tr>
+      <tr><td>Hosting and database</td><td>$0</td><td>Render free web service, Supabase free plan (auth plus access tables only). No card on either. The demo's OpenRouter key has its own $2 cap.</td></tr>
       <tr><td>My time</td><td>~5–6 hrs/week</td><td>6 hrs in Build 2.</td></tr>
     </table>
     </div>
@@ -166,7 +168,8 @@
     <ul>
       <li>&#x2611; <code>.env</code>, keys and credential files are excluded by <code>.gitignore</code>. The OAuth client file and token live outside the repo and outside OneDrive.</li>
       <li>&#x2611; No real contact data in the repo. Only made-up sample data in <code>data/sample/</code>.</li>
-      <li>&#x2611; Spending limit: the OpenRouter key has a $10 cap. The Sheets API and the PostHog free tier cost nothing.</li>
+      <li>&#x2611; Build 3 audit, with full results in <a href="https://github.com/building-with-ai-f26/ajs10249_srecrm/blob/main/SECURITY.md">SECURITY.md</a>. Signed-in Account B can't read Account A's pending contact through the app or directly from Supabase. 30 calls to the AI route return 429 after 10. A secret-key search of the repo, its full history and the live site found nothing. <code>npm audit</code> found no high-severity issues.</li>
+      <li>&#x2611; Spending limit: the OpenRouter key has a $10 cap, and the Render key has a $2 cap. Rate limits: 10 AI calls and 20 writes per minute per person. The Sheets API and the PostHog free tier cost nothing.</li>
       <li>&#x2610; Least privilege, partly done. The app only writes to the log tabs and Owner, and the server only listens on 127.0.0.1. But the Google sign-in asks for the full spreadsheets scope (every sheet my account can open), because Google's narrower scope can't open a sheet that already exists. A per-person sign-in in Build 5 limits each person to what the sheet already shares with them.</li>
       <li>&#x2611; Recovery: Git is the save point for every working step. Every sheet write is an added row or a logged Owner change, so nothing in the sheet is overwritten without a record, and the sheet keeps its own version history. Changes that could clash are rejected instead of overwriting. A cloud rollback path comes in Build 5.</li>
     </ul>
@@ -204,6 +207,16 @@
       <li><strong>What broke:</strong> PostHog's setup screen said "no events" even though events were arriving. I checked the browser's network traffic, saw PostHog accepting them, and skipped the setup wizard. A search-results count would have counted group headers as results; I caught it before shipping. The earlier token estimates were low: Claude Code's own logs show 2.4M on Nov 8 and 9.7M on Nov 9.</li>
       <li><strong>Cost:</strong> 6 hrs this build (4 on Thu/Fri, 2 today). ~29.5M tokens for Build 2, measured from Claude Code's logs and about 97% cache reads; that's about $15 at API rates, ~44M tokens and about $20 to date. OpenRouter is capped at $10. $0 for hosting, the Sheets API and PostHog.</li>
       <li><strong>Next:</strong> show the board, and watch PostHog for real use and time-to-log; message templates with mailto and copy-for-LinkedIn (workflow steps 4–5); fill in the firm for the 38 contacts missing one; plan hosting and per-person nyu.edu sign-in for Build 5.</li>
+    </ul>
+
+    <h3>November 23, 2026 · Build 3</h3>
+    <ul>
+      <li><strong>What shipped:</strong> a public demo on Render (<a href="https://srecrm-demo.onrender.com/">srecrm-demo.onrender.com</a>, made-up data) with Supabase sign-in and Row Level Security. Each person sees emails, and can log outreach, only for contacts the access rule allows. Also: per-person rate limits on the AI route and every write, a server that refuses to put live-sheet data on a public host, migrations in git, SECURITY.md, and AGENTS.md Shipping and Ask me first sections. Earlier this week (Nov 17): read-only Drive access, a folder survey and a dry run of conference enrichment.</li>
+      <li><strong>Decision:</strong> Supabase holds only access facts (login, role, Contact_ID, owner, approval, hold), never contact data, so the Google Sheet stays the only home for real data.</li>
+      <li><strong>What broke:</strong> the Supabase URL first went into <code>.env</code> as the Site URL, then with <code>/rest/v1</code> on the end. RLS was on, but this project gives signed-in users no table access by default, so everyone got "permission denied" until a read-only grant (<code>migrations/002</code>). A scripted edit dropped a backslash in the login-token regex and broke every sign-in; the attack test caught it before deploy, and it's now a rule in AGENTS.md.</li>
+      <li><strong>What I learned:</strong> RLS needs two layers: a table grant, then a policy that picks the rows. A server holding a secret key skips RLS completely, so it has to call Supabase with each person's own token.</li>
+      <li><strong>Cost:</strong> $0 hosting and database (free plans). OpenRouter: cents, with a $2 cap on the demo key. Hours and tokens: [fill in].</li>
+      <li><strong>Next:</strong> pod testing on November 24; Build 5 puts the live sheet online behind nyu.edu Google sign-in, with a one-way sync of access facts from the sheet to Supabase.</li>
     </ul>
 
     <footer>

@@ -5,7 +5,7 @@
 - **Builder:** [Your Name] (`@github-handle`)
 - **Pod:** [Pod Name / Number]
 - **Product Page & Living PRD:** [Add your GitHub Pages URL]
-- **App:** runs locally through Week 4; add a cloud URL in Build 5.
+- **Live demo:** https://srecrm-demo.onrender.com/ (made-up sample data, Supabase sign-in; create an account to try it). Security audit: [SECURITY.md](./SECURITY.md).
 
 ## Start here: Build 1
 

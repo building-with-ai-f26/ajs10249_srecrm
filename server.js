@@ -5,10 +5,19 @@ const { createSampleSource } = require("./lib/sources/sample");
 const { createXlsxSource } = require("./lib/sources/xlsx");
 const { createGoogleSource } = require("./lib/sources/google");
 const { createOrgProfiles } = require("./lib/orgProfile");
+const { createAccess } = require("./lib/access");
 
 const PORT = Number(process.env.PORT) || 3000;
-const HOST = "127.0.0.1"; // local only: anyone who can reach the server acts as the signed-in user
 const MODE = process.env.DATA_SOURCE || "sample";
+// Render sets RENDER=true. PUBLIC=1 lets you rehearse the public setup locally.
+const IS_PUBLIC = Boolean(process.env.RENDER) || process.env.PUBLIC === "1";
+const access = createAccess({ url: process.env.SUPABASE_URL, publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY });
+if (IS_PUBLIC && MODE !== "sample") {
+  // google/xlsx mode acts as MY Google account: it must never be reachable from the internet.
+  throw new Error(`Refusing to start: DATA_SOURCE=${MODE} on a public host. Real data stays on localhost until Build 5.`);
+}
+if (IS_PUBLIC && !access.enabled) throw new Error("Refusing to start: a public host needs SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY for sign-in.");
+const HOST = IS_PUBLIC ? "0.0.0.0" : "127.0.0.1";
 
 function createSource() {
   if (MODE === "google") {
@@ -26,6 +35,8 @@ function createSource() {
 
 const source = createSource();
 const app = express();
+app.set("trust proxy", 1); // Render's proxy: req.ip is the visitor, not the proxy
+app.disable("x-powered-by");
 app.use(express.json({ limit: "10kb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -36,8 +47,67 @@ app.get("/api/config", (req, res) => {
     posthogKey: process.env.POSTHOG_KEY || "",
     posthogHost: process.env.POSTHOG_HOST || "https://us.i.posthog.com",
     dataMode: MODE,
+    supabaseUrl: access.enabled ? process.env.SUPABASE_URL : "",
+    supabasePublishableKey: access.enabled ? process.env.SUPABASE_PUBLISHABLE_KEY : "", // public by design; RLS protects data
   });
 });
+
+// ---------- Sign-in and access (Supabase RLS) ----------
+// Every /api route below this line needs a signed-in person when Supabase is configured.
+app.use("/api", async (req, res, next) => {
+  if (!access.enabled) return next(); // local google/xlsx mode without Supabase: localhost only
+  try {
+    const token = (req.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    req.access = await access.forToken(token);
+    if (!req.access) return res.status(401).json({ error: "Please sign in.", needLogin: true });
+    next();
+  } catch (err) {
+    console.error("Access check failed:", err.message);
+    res.status(503).json({ error: "Could not check your access right now. Try again in a minute." });
+  }
+});
+
+// True if the signed-in person may see and work this contact (RLS returned its ID).
+function canWork(req, contactId) {
+  return !req.access || req.access.allowed.has(contactId);
+}
+function forbidden(res) {
+  return res.status(403).json({ error: "You don't have access to this contact. Ask its owner or an admin." });
+}
+
+// Per-visitor rate limits (in memory; reset when the server restarts).
+function rateLimit(name, max, windowMs) {
+  const hits = new Map();
+  return (req, res, next) => {
+    const key = (req.access && req.access.userId) || req.ip;
+    const now = Date.now();
+    let h = hits.get(key);
+    if (!h || now > h.reset) hits.set(key, h = { count: 0, reset: now + windowMs });
+    if (++h.count > max) {
+      res.set("Retry-After", String(Math.ceil((h.reset - now) / 1000)));
+      return res.status(429).json({ error: `Too many requests. Try again in ${Math.ceil((h.reset - now) / 1000)} seconds.` });
+    }
+    if (hits.size > 10000) for (const [k, v] of hits) if (now > v.reset) hits.delete(k);
+    next();
+  };
+}
+const writeLimit = rateLimit("writes", 20, 60_000);  // database/sheet writes
+const aiLimit = rateLimit("ai", 10, 60_000);         // paid OpenRouter calls
+app.post("/api/*", writeLimit);
+
+// Hide what RLS didn't allow: no email (or phone) for contacts this person can't work.
+function filterForPerson(data, req) {
+  if (!req.access) return data;
+  return {
+    ...data,
+    Contacts: data.Contacts.map(c => {
+      if (canWork(req, c.Contact_ID)) return c;
+      const { Email, Phone, ...rest } = c;
+      return { ...rest, Locked: true };
+    }),
+    Me: { email: req.access.email, name: req.access.name, role: req.access.role },
+  };
+}
 
 // Real data is held in memory only and refreshed at most once a minute.
 let cache = null;
@@ -72,7 +142,7 @@ app.get("/api/data", async (req, res) => {
     if (await needsSignIn()) {
       return res.status(401).json({ error: "Sign in with Google to load the sheet.", signIn: "/auth/google" });
     }
-    res.json({ ...(await getData()), Source: { mode: source.mode, canWrite: source.canWrite } });
+    res.json({ ...filterForPerson(await getData(), req), Source: { mode: source.mode, canWrite: source.canWrite } });
   } catch (err) {
     sendSourceError(res, err, "Could not load data");
   }
@@ -108,7 +178,7 @@ const profiles = createOrgProfiles({
 
 // Firm profile from the web. Only works for firms that exist in the data,
 // so the endpoint can't be used to send arbitrary prompts.
-app.get("/api/org-profile", async (req, res) => {
+app.get("/api/org-profile", aiLimit, async (req, res) => {
   if (!profiles.enabled) return res.status(503).json({ error: "Add OPENROUTER_API_KEY to .env to look up firms." });
   try {
     const name = String(req.query.name || "");
@@ -156,6 +226,7 @@ app.post("/api/outreach", (req, res) => {
       if (!data.Channels.includes(row.Channel)) return res.status(400).json({ error: "Pick a channel" });
       const contact = data.Contacts.find(c => c.Contact_ID === row.Contact_ID);
       if (!contact) return res.status(400).json({ error: "Unknown contact" });
+      if (!canWork(req, contact.Contact_ID)) return forbidden(res);
       await source.appendOutreach(row, contact);
       cache = null;
       res.status(201).json(row);
@@ -187,6 +258,7 @@ app.post("/api/assign", (req, res) => {
         ? data.Organizations.find(o => o.Org_Name === key)
         : data.Contacts.find(c => c.Contact_ID === key);
       if (!record) return res.status(400).json({ error: "Unknown record" });
+      if (kind === "contact" && !canWork(req, record.Contact_ID)) return forbidden(res);
       const ids = [key, ...(record.Alt_IDs || [])]; // duplicate rows of the same person
       const previous = await source.setOwner(kind, key, owner, expected, ids);
       cache = null;
@@ -217,6 +289,7 @@ app.post("/api/relationship", (req, res) => {
       if (!data.Relationship_Types.includes(rel.Relationship)) return res.status(400).json({ error: "Pick a relationship type" });
       const contact = data.Contacts.find(c => c.Contact_ID === rel.Contact_ID);
       if (!contact) return res.status(400).json({ error: "Unknown contact" });
+      if (!canWork(req, contact.Contact_ID)) return forbidden(res);
       await source.addRelationship(rel, contact);
       cache = null;
       res.status(201).json(rel);
@@ -268,6 +341,7 @@ app.post("/api/tasks", (req, res) => {
     if (base.Org_Name && !data.Organizations.some(o => o.Org_Name === base.Org_Name)) return res.status(400).json({ error: "Unknown firm" });
     const contacts = ids.map(id => data.Contacts.find(c => c.Contact_ID === id || (c.Alt_IDs || []).includes(id)));
     if (contacts.some(c => !c)) return res.status(400).json({ error: "Unknown contact" });
+    if (contacts.some(c => !canWork(req, c.Contact_ID))) return forbidden(res);
     const people = contacts.length ? contacts : [null];
     const tasks = people.map(c => ({
       ...base,
@@ -316,6 +390,7 @@ app.post("/api/tasks/done", (req, res) => {
     if (!task) return res.status(400).json({ error: "Unknown task" });
     if (task.Status === "Done") return res.status(409).json({ error: "Already done. Refresh the page." });
     const contact = task.Contact_ID && data.Contacts.find(c => c.Contact_ID === task.Contact_ID);
+    if (contact && !canWork(req, contact.Contact_ID)) return forbidden(res);
     if (contact && !data.Channels.includes(channel)) return res.status(400).json({ error: "Pick how you reached out" });
 
     // Log first: if marking done then fails, the task stays open and visible
@@ -345,5 +420,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`SRECRM running at http://localhost:${PORT} (data: ${source.mode})`);
+  console.log(`SRECRM running on ${HOST}:${PORT} (data: ${source.mode}, sign-in: ${access.enabled ? "Supabase" : "off"})`);
 });

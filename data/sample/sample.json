@@ -57,7 +57,8 @@
       "Organization": "Harborline Capital",
       "Owner": "Sample Owner A",
       "Approval": "Approved",
-      "Status": "Active"
+      "Status": "Active",
+      "Email": "dana.whitcomb@example.com"
     },
     {
       "Contact_ID": "C002",
@@ -66,7 +67,8 @@
       "Organization": "Harborline Capital",
       "Owner": "Sample Owner A",
       "Approval": "Approved",
-      "Status": "Active"
+      "Status": "Active",
+      "Email": "ravi.okonkwo@example.com"
     },
     {
       "Contact_ID": "C003",
@@ -75,7 +77,8 @@
       "Organization": "Meridian Square Partners",
       "Owner": "Sample Owner B",
       "Approval": "Pending",
-      "Status": "Active"
+      "Status": "Active",
+      "Email": "lena.marchetti@example.com"
     },
     {
       "Contact_ID": "C004",
@@ -84,7 +87,8 @@
       "Organization": "Copperleaf Realty Advisors",
       "Owner": "Sample Owner C",
       "Approval": "Approved",
-      "Status": "Active"
+      "Status": "Active",
+      "Email": "theo.brannigan@example.com"
     },
     {
       "Contact_ID": "C005",
@@ -93,7 +97,8 @@
       "Organization": "Copperleaf Realty Advisors",
       "Owner": "Sample Owner C",
       "Approval": "Approved",
-      "Status": "Active"
+      "Status": "Active",
+      "Email": "priya.castellanos@example.com"
     },
     {
       "Contact_ID": "C006",
@@ -102,7 +107,8 @@
       "Organization": "Northgate Development Co.",
       "Owner": "Sample Owner B",
       "Approval": "Do Not Contact",
-      "Status": "Inactive"
+      "Status": "Inactive",
+      "Email": "marcus.ellery@example.com"
     },
     {
       "Contact_ID": "C007",
@@ -111,7 +117,8 @@
       "Organization": "Bluestone Lending Group",
       "Owner": "",
       "Approval": "Pending",
-      "Status": "Active"
+      "Status": "Active",
+      "Email": "simone.achterberg@example.com"
     },
     {
       "Contact_ID": "C008",
@@ -120,7 +127,8 @@
       "Organization": "Ashford & Vale Brokerage",
       "Owner": "Sample Owner A",
       "Approval": "Approved",
-      "Status": "Active"
+      "Status": "Active",
+      "Email": "jonah.pellegrino@example.com"
     },
     {
       "Contact_ID": "C009",
@@ -129,7 +137,8 @@
       "Organization": "Ashford & Vale Brokerage",
       "Owner": "Sample Owner A",
       "Approval": "Approved",
-      "Status": "Active"
+      "Status": "Active",
+      "Email": "keiko.arnaud@example.com"
     },
     {
       "Contact_ID": "C010",
@@ -138,7 +147,8 @@
       "Organization": "Tidewater REIT Holdings",
       "Owner": "Sample Owner D",
       "Approval": "Approved",
-      "Status": "Active"
+      "Status": "Active",
+      "Email": "wendell.osei@example.com"
     },
     {
       "Contact_ID": "C011",
@@ -147,7 +157,8 @@
       "Organization": "Tidewater REIT Holdings",
       "Owner": "Sample Owner D",
       "Approval": "Approved",
-      "Status": "Active"
+      "Status": "Active",
+      "Email": "farah.lindqvist@example.com"
     },
     {
       "Contact_ID": "C012",
@@ -156,7 +167,8 @@
       "Organization": "Lanternfield Proptech",
       "Owner": "Sample Owner C",
       "Approval": "Approved",
-      "Status": "Inactive"
+      "Status": "Inactive",
+      "Email": "gideon.talbot@example.com"
     }
   ],
   "Outreach_Log": [

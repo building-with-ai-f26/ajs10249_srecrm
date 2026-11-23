@@ -250,12 +250,26 @@
         <a href="#tasks" data-tab="tasks">Tasks <span id="task-count" class="count"></span></a>
       </nav>
       <span id="source"></span>
+      <span id="who" hidden><span id="who-email"></span> · <button type="button" class="link" id="sign-out">Sign out</button></span>
       <label class="me-pick">I'm <select id="me" aria-label="Who are you?"><option value="">pick your name</option></select></label>
     </div>
   </header>
 
   <main>
     <p id="load-error" class="card" style="padding:16px" hidden></p>
+
+    <!-- Sign-in (Supabase Auth). Shown only when the server has sign-in turned on. -->
+    <section id="login" class="card" style="padding:20px;max-width:380px;margin:24px auto" hidden>
+      <h2 style="margin-top:0">Sign in to SRECRM</h2>
+      <p class="empty" style="margin-top:0">Demo with made-up data. New here? Pick an email and password and click Create account.</p>
+      <form id="login-form">
+        <label>Email<br><input id="login-email" type="email" autocomplete="email" required style="width:100%"></label><br><br>
+        <label>Password (8+ characters)<br><input id="login-password" type="password" minlength="8" autocomplete="current-password" required style="width:100%"></label><br><br>
+        <button class="btn" type="submit" data-mode="in">Sign in</button>
+        <button class="btn ghost" type="submit" data-mode="up">Create account</button>
+        <p id="login-msg" class="empty" role="status"></p>
+      </form>
+    </section>
 
     <!-- Home -->
     <section id="view-home" hidden>
@@ -360,6 +374,7 @@
   </main>
   <div id="toast" role="status" hidden></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script>
     let data = { Organizations: [], Contacts: [], Outreach_Log: [], Channels: [], Owners: [], Org_Types: [], Source: {} };
     let selectedKey = null;
@@ -387,7 +402,48 @@
       if (analytics === "on") try { window.posthog.capture(event, props || {}); } catch {}
     }
     function stripHash(url) { return typeof url === "string" ? url.split("#")[0] : url; }
-    fetch("/api/config").then(r => r.json()).then(cfg => {
+    // ---------- Sign-in: attach the Supabase login token to every /api call ----------
+    let sb = null;
+    const rawFetch = window.fetch.bind(window);
+    window.fetch = async (url, opts = {}) => {
+      if (sb && typeof url === "string" && url.startsWith("/api/") && url !== "/api/config") {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) opts = { ...opts, headers: { ...(opts.headers || {}), Authorization: "Bearer " + session.access_token } };
+      }
+      return rawFetch(url, opts);
+    };
+    const configLoaded = rawFetch("/api/config").then(r => r.json());
+    // Resolves once someone is signed in (or right away when sign-in is off, e.g. local live-sheet mode).
+    const signedIn = configLoaded.then(cfg => new Promise(resolve => {
+      if (!cfg.supabaseUrl || !window.supabase) return resolve();
+      sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey);
+      const showWho = session => {
+        document.getElementById("who-email").textContent = session.user.email;
+        document.getElementById("who").hidden = false;
+      };
+      sb.auth.getSession().then(({ data: { session } }) => {
+        if (session) { showWho(session); return resolve(); }
+        const box = document.getElementById("login");
+        box.hidden = false;
+        let mode = "in";
+        box.querySelectorAll("button[data-mode]").forEach(b => b.addEventListener("click", () => { mode = b.dataset.mode; }));
+        document.getElementById("login-form").addEventListener("submit", async e => {
+          e.preventDefault();
+          const msg = document.getElementById("login-msg");
+          const creds = { email: document.getElementById("login-email").value.trim(), password: document.getElementById("login-password").value };
+          msg.textContent = mode === "up" ? "Creating your account…" : "Signing in…";
+          const { data: out, error } = mode === "up" ? await sb.auth.signUp(creds) : await sb.auth.signInWithPassword(creds);
+          if (error || !out.session) { msg.textContent = (error && error.message) || "Check your email to confirm, then sign in."; return; }
+          box.hidden = true;
+          showWho(out.session);
+          track(mode === "up" ? "signed_up" : "signed_in");
+          resolve();
+        });
+      });
+      document.getElementById("sign-out").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
+    }));
+
+    configLoaded.then(cfg => {
       if (!cfg.posthogKey) { analytics = "off"; earlyEvents.length = 0; return; }
       // Official PostHog loader stub: queues calls until the library arrives from PostHog's CDN.
       !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once unregister identify reset get_distinct_id set_config opt_in_capturing opt_out_capturing".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
@@ -397,7 +453,10 @@
         autocapture: false,
         capture_pageview: false,
         capture_pageleave: false,
-        disable_session_recording: true,
+        // Session replay only on the public demo (made-up data), with every input masked.
+        // Never on the live sheet, where the screen shows real contacts.
+        disable_session_recording: cfg.dataMode !== "sample",
+        session_recording: { maskAllInputs: true },
         sanitize_properties: props => {
           for (const k of ["$current_url", "$referrer", "$initial_referrer", "$initial_current_url"]) {
             if (k in props) props[k] = stripHash(props[k]);
@@ -646,11 +705,14 @@
     function contactActions(c, org) {
       return `
         <a class="btn ghost small" href="${esc(linkedInHref(c, org))}" target="_blank" rel="noopener noreferrer">LinkedIn${c.LinkedIn ? "" : " search"} ↗</a>
-        <button type="button" class="btn ghost small locked" data-lock="${esc(c.Contact_ID)}">🔒 Email</button>
+        ${c.Email && !c.Locked
+          ? `<a class="btn ghost small" href="mailto:${esc(encodeURIComponent(c.Email).replace(/%40/g, "@"))}">✉ ${esc(c.Email)}</a>`
+          : `<button type="button" class="btn ghost small locked" data-lock="${esc(c.Contact_ID)}">🔒 Email</button>`}
         <button type="button" class="btn ghost small" data-key="c:${esc(c.Contact_ID)}">Log outreach</button>`;
     }
 
     function lockNote(c) {
+      if (c.Locked) return "You don't have access to this contact yet: it isn't approved for outreach, its owner has a hold on it, or it's marked Do Not Contact. Ask its owner or an admin.";
       return c.Has_Email
         ? "Emails stay in the club's Google Sheet. Coming next: sign in with your NYU Google account, and if the contact list is shared with you, the email appears here."
         : "No email on file. Try LinkedIn, or ask the owner for a warm intro.";
@@ -1206,7 +1268,7 @@
       panel.scrollTop = scroll;
     }
 
-    fetchData()
+    signedIn.then(fetchData)
       .then(json => {
         applyData(json);
         document.getElementById("source").textContent = SOURCE_LABELS[data.Source.mode] || "";

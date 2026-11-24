@@ -219,6 +219,15 @@
       <li><strong>Next:</strong> pod testing on November 24; Build 5 puts the live sheet online behind nyu.edu Google sign-in, with a one-way sync of access facts from the sheet to Supabase.</li>
     </ul>
 
+    <h3>November 24, 2026 · Chen Institute approvals</h3>
+    <ul>
+      <li><strong>What shipped:</strong> an Approvals tab for Chen Institute reviewers (new <code>chen</code> role). Each contact gets Yes/No for two tags, Approved for outreach and Approved for sponsorship. One click saves, an optional note can go with it, and reviewers can tick many contacts and decide for all of them after a confirmation. Filters: needs a decision, approved, any No, firm, event. Chen accounts can browse the CRM but not edit it.</li>
+      <li><strong>Decision:</strong> each decision is a new row in the sheet's <code>Approval_Log</code> tab (newest wins), so the app still never edits core Contacts fields. An outreach Yes also updates Supabase with the reviewer's own token (<code>migrations/003</code>: column-level grants plus RLS let only <code>chen</code> change <code>approval</code>), so board members see the email right away. Sponsorship is a badge and filter only.</li>
+      <li><strong>Verified:</strong> 23 server checks against a local stand-in for Supabase, browser click-through as Chen, member and admin at desktop and phone width, then the shipping checks locally and on the live site: 401 without sign-in, a member can't see C003 or change approvals in the app or directly in Supabase, can't promote itself to <code>chen</code>, 429 on the AI route, no secret keys in the repo, its history or the live page.</li>
+      <li><strong>What broke:</strong> the Firms filter chips were wired to the Tasks chips (first <code>.chips</code> on the page); fixed. A value that came only from the sheet's Approval column looked already decided, so a reviewer couldn't confirm it; it now shows faded with "click to confirm".</li>
+      <li><strong>Known gap:</strong> a Chen account could change <code>approval</code> by calling Supabase directly, skipping the Approval_Log row. Accepted for the demo; a single database function that logs and updates together is the Build 5 fix.</li>
+    </ul>
+
     <footer>
       Prior work: <a href="prior-work/srecrm-pre-design.pdf">srecrm-pre-design.pdf</a> is the design summary of an earlier Google Apps Script version built in October 2026, and SRECRM reuses its data model but not its architecture.
     </footer>

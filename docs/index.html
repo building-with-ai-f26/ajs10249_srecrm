@@ -215,7 +215,7 @@
       <li><strong>Decision:</strong> Supabase holds only access facts (login, role, Contact_ID, owner, approval, hold), never contact data, so the Google Sheet stays the only home for real data.</li>
       <li><strong>What broke:</strong> the Supabase URL first went into <code>.env</code> as the Site URL, then with <code>/rest/v1</code> on the end. RLS was on, but this project gives signed-in users no table access by default, so everyone got "permission denied" until a read-only grant (<code>migrations/002</code>). A scripted edit dropped a backslash in the login-token regex and broke every sign-in; the attack test caught it before deploy, and it's now a rule in AGENTS.md.</li>
       <li><strong>What I learned:</strong> RLS needs two layers: a table grant, then a policy that picks the rows. A server holding a secret key skips RLS completely, so it has to call Supabase with each person's own token.</li>
-      <li><strong>Cost:</strong> $0 hosting and database (free plans). OpenRouter: cents, with a $2 cap on the demo key. Hours and tokens: [fill in].</li>
+      <li><strong>Cost:</strong> $0 hosting and database (free plans). OpenRouter: cents, with a $2 cap on the demo key. 2 hrs this morning. About 23.3M Claude Code tokens today, measured from Claude Code&#39;s logs and 98% cache reads: roughly $12 at API rates, on the same basis as Build 2.</li>
       <li><strong>Next:</strong> pod testing on November 24; Build 5 puts the live sheet online behind nyu.edu Google sign-in, with a one-way sync of access facts from the sheet to Supabase.</li>
     </ul>
 

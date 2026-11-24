@@ -47,7 +47,7 @@
     #source:empty { display: none; }
     #source { margin-left: auto; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); white-space: nowrap; }
     #source::before { content: "●"; margin-right: 6px; color: #16a34a; }
-    @media (max-width: 760px) { .tabs { order: 3; width: 100%; margin-left: 0; } #source { margin-left: auto; } }
+    @media (max-width: 760px) { .tabs { order: 3; width: 100%; margin-left: 0; overflow-x: auto; } .tabs a { white-space: nowrap; } #source { margin-left: auto; } }
     .me-pick { font-size: 13px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .me-pick select { font: inherit; font-size: 13px; color: var(--brand); font-weight: 600; padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); }
     .via { font-size: 12px; color: var(--muted); font-weight: 500; }
@@ -234,6 +234,56 @@
     .rel-list li { font-size: 14px; }
     .log-form .row.rel { grid-template-columns: 1fr 1fr 2fr; }
     @media (max-width: 640px) { .log-form .row.rel { grid-template-columns: 1fr; } }
+    /* Approvals (Chen Institute) */
+    .appr-intro { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0 4px; }
+    @media (max-width: 760px) { .appr-intro { grid-template-columns: 1fr; } }
+    .appr-intro .card { padding: 14px 16px; font-size: 14px; color: var(--muted); }
+    .appr-intro strong { color: var(--ink); display: block; font-size: 15px; margin-bottom: 2px; }
+    .appr-tools { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-top: 14px; }
+    @media (max-width: 760px) { .appr-tools { grid-template-columns: 1fr; } }
+    .appr-tools input, .appr-tools select { font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--ink); min-width: 0; }
+    .appr-tools input:focus, .appr-tools select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+    .bulk-bar { position: sticky; top: 72px; z-index: 4; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 14px; background: var(--ink); color: #fff; border-radius: var(--radius); box-shadow: 0 6px 20px rgba(0,0,0,.15); }
+    .bulk-bar .count-sel { font-weight: 700; margin-right: 4px; }
+    .bulk-bar .btn { border-color: rgba(255,255,255,.35); background: transparent; color: #fff; }
+    .bulk-bar .btn:hover { background: rgba(255,255,255,.12); }
+    .bulk-bar .btn.yes { background: #16a34a; border-color: #16a34a; }
+    .bulk-bar .btn.yes:hover { background: #15803d; }
+    .bulk-bar input { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 0; min-width: 0; flex: 1 1 180px; }
+    .bulk-bar .link { color: #fff; margin-left: auto; }
+    .appr-list { list-style: none; margin: 0; padding: 0; }
+    .appr-head, .appr-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) 150px 150px; gap: 12px; align-items: center; padding: 12px 16px; }
+    .appr-head { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--line); }
+    .appr-row { border-bottom: 1px solid var(--line); }
+    .appr-row:last-child { border-bottom: 0; }
+    .appr-row.picked { background: var(--brand-soft); }
+    .appr-row input[type=checkbox], .appr-head input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brand); cursor: pointer; }
+    .appr-who { min-width: 0; }
+    .appr-who .meta { font-size: 12.5px; color: var(--muted); }
+    .appr-note { grid-column: 2 / -1; display: flex; gap: 8px; }
+    .appr-note input { flex: 1; font: inherit; font-size: 13px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+    .seg button { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 16px; border: 0; background: none; color: var(--muted); cursor: pointer; }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button:hover:not(:disabled) { background: var(--page); color: var(--ink); }
+    .seg button[aria-pressed="true"].y { background: #16a34a; color: #fff; }
+    .seg button[aria-pressed="true"].n { background: #dc2626; color: #fff; }
+    .seg button:disabled { cursor: default; }
+    .seg[data-from="sheet"] button[aria-pressed="true"] { opacity: 0.55; }  /* not yet confirmed by a reviewer */
+    .decided { font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+    .col-label { display: none; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+    .more-row { padding: 12px 16px; text-align: center; }
+    @media (max-width: 640px) {
+      .appr-head { grid-template-columns: 28px 1fr; }
+      .appr-head .h-col { display: none; }
+      .appr-row { grid-template-columns: 28px 1fr 1fr; }
+      .appr-row .appr-who { grid-column: 2 / -1; }
+      .appr-row .appr-col.o { grid-column: 2; }
+      .appr-row .appr-col { align-self: start; }
+      .col-label { display: block; }
+      .bulk-bar { top: 110px; }
+    }
+
     #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #ffffff; padding: 10px 16px; border-radius: 8px; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.2); max-width: calc(100% - 32px); z-index: 50; }
     #toast.error { background: #b91c1c; }
   </style>
@@ -248,6 +298,7 @@
         <a href="#dashboard" data-tab="dashboard">Dashboard</a>
         <a href="#firms" data-tab="firms">Firms &amp; Outreach</a>
         <a href="#tasks" data-tab="tasks">Tasks <span id="task-count" class="count"></span></a>
+        <a href="#approvals" data-tab="approvals" id="approvals-tab" hidden>Approvals <span id="appr-count" class="count"></span></a>
       </nav>
       <span id="source"></span>
       <span id="who" hidden><span id="who-email"></span> · <button type="button" class="link" id="sign-out">Sign out</button></span>
@@ -349,6 +400,42 @@
       <div id="task-list" class="card" style="padding:8px 18px 18px;margin-top:12px"></div>
     </section>
 
+    <!-- Approvals (Chen Institute) -->
+    <section id="view-approvals" hidden>
+      <div class="page-head"><h1>Approvals</h1><span id="appr-role" class="badge brand"></span></div>
+      <p class="sub" style="margin:0" id="appr-lead"></p>
+      <div class="appr-intro">
+        <div class="card"><strong>Approved for outreach</strong>Yes lets SREC board members see this person's email and reach out. No keeps them off-limits to everyone except the board member who owns the contact.</div>
+        <div class="card"><strong>Approved for sponsorship</strong>Yes marks them as OK to ask about sponsoring SREC. The board sees it as a badge and can filter by it.</div>
+      </div>
+      <div class="appr-tools">
+        <input id="appr-search" type="search" placeholder="Search a name, title or firm" autocomplete="off" aria-label="Search contacts to review">
+        <select id="appr-firm" aria-label="Firm"><option value="">All firms</option></select>
+        <select id="appr-event" aria-label="Event"><option value="">Any event</option></select>
+      </div>
+      <div class="chips" role="group" aria-label="Which contacts" id="appr-chips">
+        <button type="button" class="chip" data-appr="todo" aria-pressed="true">Needs a decision</button>
+        <button type="button" class="chip" data-appr="outreach" aria-pressed="false">Approved for outreach</button>
+        <button type="button" class="chip" data-appr="sponsorship" aria-pressed="false">Approved for sponsorship</button>
+        <button type="button" class="chip" data-appr="declined" aria-pressed="false">Any No</button>
+        <button type="button" class="chip" data-appr="all" aria-pressed="false">Everyone</button>
+      </div>
+      <div class="bulk-bar" id="bulk-bar" hidden>
+        <span class="count-sel" id="bulk-count"></span>
+        <button type="button" class="btn small yes" data-bulk="Outreach|Yes">Outreach: Yes</button>
+        <button type="button" class="btn small" data-bulk="Outreach|No">Outreach: No</button>
+        <button type="button" class="btn small yes" data-bulk="Sponsorship|Yes">Sponsorship: Yes</button>
+        <button type="button" class="btn small" data-bulk="Sponsorship|No">Sponsorship: No</button>
+        <input type="text" id="bulk-note" maxlength="300" placeholder="Note for all of them (optional)" aria-label="Note for the selected contacts">
+        <button type="button" class="link" id="bulk-clear">Clear</button>
+      </div>
+      <p id="appr-stats" class="sub" style="margin:10px 2px 0;font-size:13px"></p>
+      <div class="card" style="margin-top:8px">
+        <div class="appr-head" id="appr-head"></div>
+        <ul class="appr-list" id="appr-list"></ul>
+      </div>
+    </section>
+
     <!-- Firms & Outreach -->
     <section id="view-firms" hidden>
       <div class="toolbar">
@@ -363,6 +450,7 @@
         <button type="button" class="chip" data-filter="all" aria-pressed="true">All firms</button>
         <button type="button" class="chip" data-filter="sponsors" aria-pressed="false">Sponsors</button>
         <button type="button" class="chip" data-filter="approved" aria-pressed="false">Has approved contacts</button>
+        <button type="button" class="chip" data-filter="sponsorship" aria-pressed="false">Sponsorship-approved contacts</button>
         <button type="button" class="chip" data-filter="unclaimed" aria-pressed="false">Nobody's on it</button>
       </div>
       <p id="stats"></p>
@@ -502,6 +590,15 @@
       if (/^no$/i.test(c.Approval)) return badge("Not approved", "bad");
       return badge(c.Approval);
     }
+    // Chen Institute decisions: "Yes", "No" or "" (not decided yet).
+    function decisionOf(c, tag) { return ((c.Approvals || {})[tag] || {}).Decision || ""; }
+    function sponsorshipOK(c) { return decisionOf(c, "Sponsorship") === "Yes"; }
+    function sponsorshipBadge(c) { return sponsorshipOK(c) ? badge("Sponsorship OK", "info") : ""; }
+    function canApprove() { return Boolean(data.Me && data.Me.canApprove); }
+    function seesApprovals() { return Boolean(data.Me && ["chen", "admin", "approver"].includes(data.Me.role)); }
+    function readOnlyReason() {
+      return data.Source.mode === "xlsx" ? "Logging is off while reading the Excel copy." : "Your account can view the CRM but not edit it.";
+    }
 
     // ---------- Owners and relationships ----------
     function team() {
@@ -607,7 +704,7 @@
     }
     function showFirms({ filter = "all", owner = "" }) {
       firmFilter = filter;
-      document.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.filter === filter)));
+      document.querySelectorAll("#view-firms .chip").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.filter === filter)));
       document.getElementById("owner-filter").value = owner;
       selectedKey = null;
       if (location.hash === "#firms") route(); else location.hash = "firms";
@@ -623,6 +720,7 @@
       if (firmFilter === "sponsors" && !isSponsor(o)) return false;
       if (firmFilter === "unclaimed" && !isUnclaimed(o)) return false;
       if (firmFilter === "approved" && !people.some(isApproved)) return false;
+      if (firmFilter === "sponsorship" && !people.some(sponsorshipOK)) return false;
       if (!q) return true;
       return `${o.Org_Name} ${o.Type} ${o.HQ_City}`.toLowerCase().includes(q) ||
         people.some(c => `${c.Name} ${c.Title}`.toLowerCase().includes(q));
@@ -694,7 +792,7 @@
           <span class="sub"> · ${esc(orDash(c.Title))}</span>
         </div>
         <div class="badges" style="margin:0;grid-column:2">
-          ${approvalBadge(c)} ${isAlum(c) ? badge("Stern alum", "brand") : ""} ${badge(c.Status)}
+          ${approvalBadge(c)} ${sponsorshipBadge(c)} ${isAlum(c) ? badge("Stern alum", "brand") : ""} ${badge(c.Status)}
         </div>
         <div class="owner-row" style="grid-column:2;margin-top:4px">Owner ${assignSelect("contact", c.Contact_ID, c.Owner, `Owner of ${c.Name}`, org && org.Owner)}
           ${knowsText(c) ? `<span class="knows">· ${esc(knowsText(c))}</span>` : ""}</div>
@@ -773,7 +871,7 @@
 
     // ---------- Contact detail ----------
     function renderLogForm(c) {
-      if (!data.Source.canWrite) return '<h3>Log outreach</h3><p class="empty">Logging is off while reading the Excel copy.</p>';
+      if (!data.Source.canWrite) return `<h3>Log outreach</h3><p class="empty">${esc(readOnlyReason())}</p>`;
       const today = new Date().toLocaleDateString("en-CA");
       return `
         <h3>Log outreach</h3>
@@ -823,7 +921,7 @@
         <div class="kind" style="margin-top:8px">Contact</div>
         <h2>${esc(c.Name)}</h2>
         <div class="sub">${esc(joinSub(c.Title, c.Organization))}</div>
-        <div class="badges">${approvalBadge(c)} ${isAlum(c) ? badge("Stern alum", "brand") : ""} ${badge(c.Status)} ${org && isSponsor(org) ? badge("Firm is a sponsor", "good") : ""}</div>
+        <div class="badges">${approvalBadge(c)} ${sponsorshipBadge(c)} ${isAlum(c) ? badge("Stern alum", "brand") : ""} ${badge(c.Status)} ${org && isSponsor(org) ? badge("Firm is a sponsor", "good") : ""}</div>
         <div class="badges" style="margin-top:14px">${contactActions(c, org).replace(/<button[^>]*data-key[^>]*>Log outreach<\/button>/, "")}</div>
         <dl>
           <dt>Owner</dt><dd class="owner-row" style="margin:0">${assignSelect("contact", c.Contact_ID, c.Owner, `Owner of ${c.Name}`, org && org.Owner)}</dd>
@@ -1051,9 +1149,208 @@
       }
     });
 
-    // ---------- Routing: #home, #dashboard, #firms, #tasks, #o:Firm, #c:ID ----------
+    // ---------- Approvals (Chen Institute) ----------
+    // Chen members click Yes/No per contact (saved right away) or tick several and decide in bulk.
+    // Admins and approvers see the same list read-only.
+    let apprFilter = "todo";
+    let apprLimit = 100;
+    const picked = new Set();      // Contact_IDs ticked for a bulk decision
+    const apprNotes = new Map();   // Contact_ID -> note typed on that row, sent with its next decision
+    const APPR_EMPTY = {
+      todo: "Everyone has a decision for both tags. Nice work.", outreach: "Nobody is approved for outreach yet.",
+      sponsorship: "Nobody is approved for sponsorship yet.", declined: "No one has a No.", all: "No contacts match.",
+    };
+
+    function eventsOf(c) { return (data.Panels || []).filter(p => p.Contact_IDs.includes(c.Contact_ID)).map(p => p.Event_Name); }
+    function needsDecision(c) { return !decisionOf(c, "Outreach") || !decisionOf(c, "Sponsorship"); }
+    function apprList() {
+      const q = document.getElementById("appr-search").value.trim().toLowerCase();
+      const firm = document.getElementById("appr-firm").value;
+      const ev = document.getElementById("appr-event").value;
+      const panel = ev && data.Panels.find(p => p.Event_Name === ev);
+      return data.Contacts.filter(c => {
+        if (apprFilter === "todo" && !needsDecision(c)) return false;
+        if (apprFilter === "outreach" && decisionOf(c, "Outreach") !== "Yes") return false;
+        if (apprFilter === "sponsorship" && decisionOf(c, "Sponsorship") !== "Yes") return false;
+        if (apprFilter === "declined" && decisionOf(c, "Outreach") !== "No" && decisionOf(c, "Sponsorship") !== "No") return false;
+        if (firm && (c.Organization || "__none__") !== firm) return false;
+        if (panel && !panel.Contact_IDs.includes(c.Contact_ID)) return false;
+        return !q || `${c.Name} ${c.Title} ${c.Organization}`.toLowerCase().includes(q);
+      }).sort((a, b) => (a.Organization || "~").localeCompare(b.Organization || "~") || a.Name.localeCompare(b.Name));
+    }
+
+    function decisionCell(c, tag) {
+      const a = (c.Approvals || {})[tag] || {};
+      const d = a.Decision || "";
+      const off = canApprove() ? "" : " disabled";
+      const when = a.From === "sheet" ? (canApprove() ? "From the sheet · click to confirm" : "From the sheet") : a.Date ? joinSub(a.Date, a.By) : "Not decided";
+      return `<div class="appr-col ${tag === "Outreach" ? "o" : "s"}">
+        <div class="col-label">${tag === "Outreach" ? "Outreach" : "Sponsorship"}</div>
+        <div class="seg" role="group" data-from="${esc(a.From || "")}" aria-label="Approved for ${tag.toLowerCase()}: ${esc(c.Name)}">
+          <button type="button" class="y" data-decide="${tag}|Yes" aria-pressed="${d === "Yes"}"${off}>Yes</button>
+          <button type="button" class="n" data-decide="${tag}|No" aria-pressed="${d === "No"}"${off}>No</button>
+        </div>
+        <div class="decided">${esc(when)}${a.Note ? ` · “${esc(a.Note)}”` : ""}</div>
+      </div>`;
+    }
+
+    function apprRow(c) {
+      const id = c.Contact_ID;
+      const last = historyFor([id])[0];
+      const evs = eventsOf(c);
+      const meta = joinSub(c.Title, c.Organization || "No firm", c.Owner && "Owner: " + c.Owner,
+        isAlum(c) && "Stern alum", last && "Last outreach " + last.Date, evs.length && "Spoke at " + evs.join(", "));
+      const noteOpen = apprNotes.has(id);
+      return `<li class="appr-row${picked.has(id) ? " picked" : ""}" data-row="${esc(id)}">
+        ${canApprove() ? `<input type="checkbox" data-pick="${esc(id)}" aria-label="Select ${esc(c.Name)}"${picked.has(id) ? " checked" : ""}>` : "<span></span>"}
+        <div class="appr-who">
+          <button type="button" class="link" data-key="c:${esc(id)}">${esc(c.Name)}</button>
+          ${canApprove() && !noteOpen ? '<button type="button" class="link" data-note-open style="font-size:12px;font-weight:500;margin-left:8px">+ note</button>' : ""}
+          <div class="meta">${esc(meta)}</div>
+        </div>
+        ${decisionCell(c, "Outreach")}
+        ${decisionCell(c, "Sponsorship")}
+        ${noteOpen ? `<div class="appr-note"><input type="text" maxlength="300" data-note="${esc(id)}" value="${esc(apprNotes.get(id))}"
+          placeholder="Optional note, saved with your next Yes or No for this person" aria-label="Note for ${esc(c.Name)}"></div>` : ""}
+      </li>`;
+    }
+
+    function renderApprCount() {
+      const n = canApprove() ? data.Contacts.filter(needsDecision).length : 0;
+      document.getElementById("appr-count").textContent = n ? String(n) : "";
+    }
+
+    function renderApprovals() {
+      const list = apprList();
+      const shown = list.slice(0, apprLimit);
+      const todo = data.Contacts.filter(needsDecision).length;
+      document.getElementById("appr-role").textContent = canApprove() ? "Chen Institute" : "View only";
+      document.getElementById("appr-lead").textContent = canApprove()
+        ? `${todo} of ${data.Contacts.length} contacts need a decision. Click Yes or No and it saves right away, or tick several and decide for all of them at once.`
+        : "Only Chen Institute reviewers can make these decisions. Here you can see what they decided.";
+      document.querySelectorAll("#appr-chips .chip").forEach(ch => ch.setAttribute("aria-pressed", String(ch.dataset.appr === apprFilter)));
+      const allPicked = shown.length > 0 && shown.every(c => picked.has(c.Contact_ID));
+      document.getElementById("appr-head").innerHTML =
+        `${canApprove() ? `<input type="checkbox" id="pick-all" aria-label="Select all shown"${allPicked ? " checked" : ""}>` : "<span></span>"}
+        <span>Contact</span><span class="h-col">Outreach</span><span class="h-col">Sponsorship</span>`;
+      document.getElementById("appr-list").innerHTML = shown.length
+        ? shown.map(apprRow).join("") + (list.length > shown.length
+          ? `<li class="more-row"><button type="button" class="btn ghost small" id="appr-more">Show ${Math.min(100, list.length - shown.length)} more</button></li>` : "")
+        : `<li class="more-row empty">${esc(APPR_EMPTY[apprFilter])}</li>`;
+      document.getElementById("appr-stats").textContent = `Showing ${shown.length} of ${list.length}`;
+      renderBulkBar();
+      renderApprCount();
+    }
+
+    function renderBulkBar() {
+      for (const id of [...picked]) if (!data.Contacts.some(c => c.Contact_ID === id)) picked.delete(id);
+      document.getElementById("bulk-bar").hidden = !picked.size;
+      document.getElementById("bulk-count").textContent = `${picked.size} selected`;
+    }
+
+    function fillApprovalControls() {
+      const firms = [...new Set(data.Contacts.map(c => c.Organization).filter(Boolean))].sort();
+      document.getElementById("appr-firm").innerHTML = '<option value="">All firms</option>' +
+        firms.map(f => `<option>${esc(f)}</option>`).join("") +
+        (data.Contacts.some(c => !c.Organization) ? '<option value="__none__">No firm</option>' : "");
+      document.getElementById("appr-event").innerHTML = '<option value="">Any event</option>' +
+        (data.Panels || []).map(p => `<option value="${esc(p.Event_Name)}">${esc(p.Event_Name)} (speakers)</option>`).join("");
+    }
+
+    async function decide(ids, tag, decision, note) {
+      const json = await postJSON("/api/approvals", { Contact_IDs: ids, Tag: tag, Decision: decision, Note: note || "" });
+      ids.forEach(id => apprNotes.delete(id));
+      track("approval_saved", { tag, decision, count: ids.length });
+      const what = `${tag === "Outreach" ? "outreach" : "sponsorship"}: ${decision}`;
+      if (json.warning) toast(json.warning, true);
+      else toast(ids.length === 1 ? `Saved (${what}).` : `${ids.length} contacts saved (${what}).`);
+      await reloadData();
+    }
+
+    function setApprFilter() { apprLimit = 100; renderApprovals(); }
+    document.getElementById("appr-search").addEventListener("input", setApprFilter);
+    document.getElementById("appr-firm").addEventListener("change", setApprFilter);
+    document.getElementById("appr-event").addEventListener("change", setApprFilter);
+    document.getElementById("appr-chips").addEventListener("click", e => {
+      const chip = e.target.closest(".chip");
+      if (!chip) return;
+      apprFilter = chip.dataset.appr;
+      setApprFilter();
+    });
+
+    document.getElementById("view-approvals").addEventListener("click", async e => {
+      if (e.target.closest("#appr-more")) { apprLimit += 100; return renderApprovals(); }
+      if (e.target.closest("#bulk-clear")) { picked.clear(); return renderApprovals(); }
+      const open = e.target.closest("button[data-key]");
+      if (open) return select(open.dataset.key);
+      const noteBtn = e.target.closest("button[data-note-open]");
+      if (noteBtn) {
+        const id = noteBtn.closest("[data-row]").dataset.row;
+        apprNotes.set(id, "");
+        renderApprovals();
+        const input = document.querySelector(`#appr-list input[data-note="${CSS.escape(id)}"]`);
+        if (input) input.focus();
+        return;
+      }
+      const one = e.target.closest("button[data-decide]");
+      if (one && !one.disabled) {
+        const seg = one.closest(".seg");
+        // Already decided that way in the app: nothing to do. A value that only came from the sheet's
+        // Approval column can be clicked to confirm it, which records the reviewer's decision.
+        if (one.getAttribute("aria-pressed") === "true" && seg.dataset.from === "app") return;
+        const id = one.closest("[data-row]").dataset.row;
+        const [tag, decision] = one.dataset.decide.split("|");
+        seg.querySelectorAll("button").forEach(b => { b.disabled = true; });
+        try { await decide([id], tag, decision, apprNotes.get(id)); }
+        catch (err) { toast(err.message, true); seg.querySelectorAll("button").forEach(b => { b.disabled = false; }); }
+        return;
+      }
+      const bulk = e.target.closest("button[data-bulk]");
+      if (bulk) {
+        const [tag, decision] = bulk.dataset.bulk.split("|");
+        const ids = [...picked];
+        const effect = tag === "Outreach"
+          ? (decision === "Yes" ? "Board members will be able to see their emails and reach out." : "Board members won't be able to reach out to them.")
+          : (decision === "Yes" ? "They'll be marked OK to ask about sponsorship." : "They'll be marked not OK for sponsorship asks.");
+        if (!confirm(`${decision === "Yes" ? "Approve" : "Decline"} ${ids.length} contact${ids.length === 1 ? "" : "s"} for ${tag.toLowerCase()}?\n\n${effect}`)) return;
+        const buttons = document.querySelectorAll("#bulk-bar button");
+        buttons.forEach(b => { b.disabled = true; });
+        try {
+          await decide(ids, tag, decision, document.getElementById("bulk-note").value.trim());
+          picked.clear();
+          document.getElementById("bulk-note").value = "";
+          renderApprovals();
+        } catch (err) { toast(err.message, true); }
+        finally { buttons.forEach(b => { b.disabled = false; }); }
+      }
+    });
+
+    document.getElementById("view-approvals").addEventListener("change", e => {
+      const box = e.target.closest("input[data-pick]");
+      if (box) {
+        if (box.checked) picked.add(box.dataset.pick); else picked.delete(box.dataset.pick);
+        box.closest(".appr-row").classList.toggle("picked", box.checked);
+        const shown = [...document.querySelectorAll("#appr-list input[data-pick]")];
+        document.getElementById("pick-all").checked = shown.length > 0 && shown.every(b => b.checked);
+        return renderBulkBar();
+      }
+      if (e.target.id === "pick-all") {
+        document.querySelectorAll("#appr-list input[data-pick]").forEach(b => {
+          b.checked = e.target.checked;
+          if (b.checked) picked.add(b.dataset.pick); else picked.delete(b.dataset.pick);
+          b.closest(".appr-row").classList.toggle("picked", b.checked);
+        });
+        renderBulkBar();
+      }
+    });
+    document.getElementById("appr-list").addEventListener("input", e => {
+      const note = e.target.closest("input[data-note]");
+      if (note) apprNotes.set(note.dataset.note, note.value);
+    });
+
+    // ---------- Routing: #home, #dashboard, #firms, #tasks, #approvals, #o:Firm, #c:ID ----------
     function route(keepScroll) {
-      const hash = decodeURIComponent(location.hash.slice(1)) || "home";
+      const hash = decodeURIComponent(location.hash.slice(1)) || (canApprove() ? "approvals" : "home");
       let tab = hash;
       if (/^[oc]:/.test(hash)) {
         tab = "firms";
@@ -1065,8 +1362,9 @@
       }
       if (!keepScroll && tab !== lastTab) track("tab_viewed", { tab });
       lastTab = tab;
-      if (!VIEWS.includes(tab)) tab = "home";
+      if (!VIEWS.includes(tab) || (tab === "approvals" && !seesApprovals())) tab = "home";
       renderTaskCount();
+      renderApprCount();
       for (const name of VIEWS) {
         document.getElementById("view-" + name).hidden = name !== tab;
       }
@@ -1077,9 +1375,10 @@
       if (tab === "dashboard") renderDashboard();
       if (tab === "firms") { renderResults(); renderDetail(); }
       if (tab === "tasks") renderTasksView();
+      if (tab === "approvals") renderApprovals();
       if (!keepScroll) window.scrollTo(0, 0);
     }
-    const VIEWS = ["home", "dashboard", "firms", "tasks"];
+    const VIEWS = ["home", "dashboard", "firms", "tasks", "approvals"];
     let lastTab = null;
     function select(key) { location.hash = encodeURIComponent(key); }
     window.addEventListener("hashchange", route);
@@ -1145,11 +1444,11 @@
         throw err;
       }
     }
-    document.querySelector(".chips").addEventListener("click", e => {
+    document.querySelector("#view-firms .chips").addEventListener("click", e => {
       const chip = e.target.closest(".chip");
       if (!chip) return;
       firmFilter = chip.dataset.filter;
-      document.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", String(c === chip)));
+      document.querySelectorAll("#view-firms .chip").forEach(c => c.setAttribute("aria-pressed", String(c === chip)));
       renderResults();
     });
     document.getElementById("results").addEventListener("click", e => {
@@ -1281,6 +1580,12 @@
         document.getElementById("owner-filter").insertAdjacentHTML("beforeend",
           team().map(n => `<option value="${esc(n)}">${esc(n)}'s firms &amp; contacts</option>`).join(""));
         fillTaskControls();
+        // Approvals tab: Chen reviewers decide; admins and approvers can look. Chen accounts don't
+        // pick an "I'm" name or add tasks, since they can't edit the CRM.
+        document.getElementById("approvals-tab").hidden = !seesApprovals();
+        if (seesApprovals()) fillApprovalControls();
+        if (!data.Source.canWrite) document.querySelector("#view-tasks .task-tools").hidden = true;
+        if (canApprove()) document.querySelector(".me-pick").hidden = true;
         route();
       })
       .catch(err => {

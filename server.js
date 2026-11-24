@@ -6,6 +6,7 @@ const { createXlsxSource } = require("./lib/sources/xlsx");
 const { createGoogleSource } = require("./lib/sources/google");
 const { createOrgProfiles } = require("./lib/orgProfile");
 const { createAccess } = require("./lib/access");
+const { TAGS, DECISIONS, withApprovals } = require("./lib/approvals");
 
 const PORT = Number(process.env.PORT) || 3000;
 const MODE = process.env.DATA_SOURCE || "sample";
@@ -95,17 +96,37 @@ const writeLimit = rateLimit("writes", 20, 60_000);  // database/sheet writes
 const aiLimit = rateLimit("ai", 10, 60_000);         // paid OpenRouter calls
 app.post("/api/*", writeLimit);
 
+// Chen Institute members browse the CRM read-only. Their only write is an approval decision.
+const isChen = req => Boolean(req.access && req.access.role === "chen");
+const SEES_APPROVAL_NOTES = ["chen", "admin", "approver"];
+app.post("/api/*", (req, res, next) => {
+  if (isChen(req) && req.path !== "/api/approvals") {
+    return res.status(403).json({ error: "Chen Institute accounts can review and approve, but not edit the CRM." });
+  }
+  next();
+});
+
 // Hide what RLS didn't allow: no email (or phone) for contacts this person can't work.
+// The raw Approval_Log stays on the server; each contact carries its current decisions instead.
+// Notes on decisions are for Chen, admins and approvers only.
 function filterForPerson(data, req) {
-  if (!req.access) return data;
+  const { Approval_Log, ...rest } = data;
+  if (!req.access) return rest;
+  const seesNotes = SEES_APPROVAL_NOTES.includes(req.access.role);
   return {
-    ...data,
+    ...rest,
     Contacts: data.Contacts.map(c => {
-      if (canWork(req, c.Contact_ID)) return c;
-      const { Email, Phone, ...rest } = c;
-      return { ...rest, Locked: true };
+      let out = c;
+      if (!seesNotes) {
+        const Approvals = {};
+        for (const [tag, a] of Object.entries(c.Approvals || {})) { const { Note, ...keep } = a; Approvals[tag] = keep; }
+        out = { ...c, Approvals };
+      }
+      if (canWork(req, c.Contact_ID)) return out;
+      const { Email, Phone, ...locked } = out;
+      return { ...locked, Locked: true };
     }),
-    Me: { email: req.access.email, name: req.access.name, role: req.access.role },
+    Me: { email: req.access.email, name: req.access.name, role: req.access.role, canApprove: isChen(req) },
   };
 }
 
@@ -113,7 +134,7 @@ function filterForPerson(data, req) {
 let cache = null;
 async function getData() {
   if (cache && Date.now() - cache.at < source.cacheMs) return cache.data;
-  const data = await source.read();
+  const data = withApprovals(await source.read());
   cache = { data, at: Date.now() };
   return data;
 }
@@ -142,7 +163,7 @@ app.get("/api/data", async (req, res) => {
     if (await needsSignIn()) {
       return res.status(401).json({ error: "Sign in with Google to load the sheet.", signIn: "/auth/google" });
     }
-    res.json({ ...filterForPerson(await getData(), req), Source: { mode: source.mode, canWrite: source.canWrite } });
+    res.json({ ...filterForPerson(await getData(), req), Source: { mode: source.mode, canWrite: source.canWrite && !isChen(req) } });
   } catch (err) {
     sendSourceError(res, err, "Could not load data");
   }
@@ -411,6 +432,51 @@ app.post("/api/tasks/done", (req, res) => {
     });
     cache = null;
     res.json({ Task_ID: id, Status: "Done", Done_Date: today(), Done_Note: note, logged });
+  });
+});
+
+// ---------- Chen Institute approvals ----------
+// One decision (Yes/No) on one tag for one or many contacts. Each contact gets its own Approval_Log row.
+// An Outreach decision also updates Supabase right away, so board members' email access follows it.
+app.post("/api/approvals", (req, res) => {
+  if (!isChen(req)) return res.status(403).json({ error: "Only Chen Institute accounts can approve contacts." });
+  if (!source.canWrite) return res.status(403).json({ error: "Approvals are off while reading the Excel copy." });
+  const body = req.body || {};
+  const tag = TAGS.includes(body.Tag) ? body.Tag : "";
+  const decision = DECISIONS.includes(body.Decision) ? body.Decision : "";
+  const note = clean(body.Note, 300);
+  const ids = [...new Set((Array.isArray(body.Contact_IDs) ? body.Contact_IDs : []).map(id => clean(id, 20)).filter(Boolean))];
+  if (!tag || !decision) return res.status(400).json({ error: "Pick Outreach or Sponsorship, and Yes or No." });
+  if (!ids.length) return res.status(400).json({ error: "Pick at least one contact." });
+  if (ids.length > 200) return res.status(400).json({ error: "Up to 200 contacts at a time." });
+
+  queued(res, "Could not save the approval", async data => {
+    const contacts = ids.map(id => data.Contacts.find(c => c.Contact_ID === id));
+    if (contacts.some(c => !c)) return res.status(400).json({ error: "Unknown contact. Refresh the page." });
+    const now = new Date();
+    const rows = contacts.map(c => ({
+      Date: now.toLocaleDateString("en-CA"),
+      Time: now.toTimeString().slice(0, 5),
+      Contact_ID: c.Contact_ID,
+      Contact: c.Name,
+      Tag: tag,
+      Decision: decision,
+      Note: note,
+      Decided_By: req.access.name || req.access.email,
+    }));
+    // The sheet is the record, so it's written first. If Supabase then fails, say so plainly.
+    await source.addApprovals(rows);
+    cache = null;
+    let warning = "";
+    if (tag === "Outreach") {
+      try {
+        await access.setApproval(req.access.token, contacts.map(c => c.Contact_ID), decision);
+      } catch (err) {
+        console.error("Approval saved to the sheet, but Supabase update failed:", err.message);
+        warning = "Saved, but email access didn't update yet. Tell an admin.";
+      }
+    }
+    res.status(201).json({ saved: rows.length, tag, decision, warning });
   });
 });
 

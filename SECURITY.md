@@ -15,9 +15,10 @@
 
   Schema and policies are tracked in git in `migrations/`.
 - **How access is decided:** the server checks each request's login token. It then asks Supabase which contacts that person may work, **using the person's own token**, so RLS decides. Contacts outside that set come back with no email, and every write to them returns 403. The rule is:
-  - Admins and approvers see every contact.
+  - Admins, approvers and Chen Institute reviewers (role `chen`) see every contact.
   - A contact's owner sees it unless it's Do Not Contact.
   - Other members see it only if it's approved and not on an owner hold.
+- **Chen Institute approvals** (`migrations/003`): only role `chen` can change `contact_access.approval`, only to Yes or No, and no other column. Column-level grants plus RLS policies enforce this, and the server again uses the reviewer's own token. Chen accounts are read-only everywhere else: the server returns 403 for every other write. Each decision and its note is recorded in the sheet's `Approval_Log` tab, and decision notes are sent only to Chen, admin and approver accounts.
 - **Real data stays local.** The live-sheet mode (`DATA_SOURCE=google`) acts as my Google account, so it runs only on localhost. The server refuses to start in that mode on a public host, and also refuses if sign-in isn't configured.
 
 ## Access-control test (Account B tries to read Account A's data)
